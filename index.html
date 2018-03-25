@@ -1,49 +1,290 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+    <title>reveal.js</title>
 
-		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/black.css">
 
-		<!-- Theme used for syntax highlighting of code -->
-		<link rel="stylesheet" href="lib/css/zenburn.css">
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
 
-		<!-- Printing and PDF exports -->
-		<script>
-			var link = document.createElement( 'link' );
-			link.rel = 'stylesheet';
-			link.type = 'text/css';
-			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
-			document.getElementsByTagName( 'head' )[0].appendChild( link );
-		</script>
-	</head>
-	<body>
-		<div class="reveal">
-			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
-			</div>
-		</div>
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>Being with iOS on fastlane</h1>
 
-		<script src="lib/js/head.min.js"></script>
-		<script src="js/reveal.js"></script>
+          <aside class="notes">
+            <div>
+              This talk is an expereince report on how we have automated some of the manual steps involved in creating a build and deploying it to users of our app.
+            </div>
 
-		<script>
-			// More info about config & dependencies:
-			// - https://github.com/hakimel/reveal.js#configuration
-			// - https://github.com/hakimel/reveal.js#dependencies
-			Reveal.initialize({
-				dependencies: [
-					{ src: 'plugin/markdown/marked.js' },
-					{ src: 'plugin/markdown/markdown.js' },
-					{ src: 'plugin/notes/notes.js', async: true },
-					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
-				]
-			});
-		</script>
-	</body>
+            <h3>Sense the crowd</h3>
+            <ul>
+              <li>How many people have worked on iOS only?</li>
+              <li>How many come from Ruby land or have experince in CD practices?</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section>
+          <h2>About me</h2>
+
+          <aside class="notes">
+            <div>
+              I am a Lead Consultant @ TarkaLabs. In a career of 5 years I have worked on projects using Java, Ruby, React, Node.js, Python and now iOS for the past 8 months across 5 different domains.
+            </div>
+          </aside>
+        </section>
+
+        <section>
+          <h2>Things to consider</h2>
+
+          <ul>
+            <li>Enterprise app - not deployed on App Store</li>
+            <li>2 devs cranking out the product for iOS</li>
+            <li>Different urls and configuration for different purposes - dev, staging, production</li>
+            <li>Talks to a SOAP API</li>
+            <li>Fairly complex with offline update and "sync when online" mechanism</li>
+            <li>Backed by CoreData</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Where did we begin</h2>
+
+          <ul>
+            <li>A fairly manual build and archive process involving Xcode</li>
+            <li>~ 30 mins of work</li>
+            <li>Mailing the built .ipa to the testers for testing</li>
+            <li>Few test cases either didn't run or were misconfigured</li>
+            <li>Swift 2.3</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Where did we want to get to</h2>
+          <ul>
+            <li>Testers be able to test the code, as and when they want</li>
+            <li>Developers be able to quickly build and publish an ipa</li>
+            <li>Stable codebase with good test coverage</li>
+            <li>Minimum setup required for new developers</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Let's talk about the journey</h2>
+        </section>
+
+        <section>
+          <h2>fastlane</h2>
+        </section>
+
+        <section>
+          <pre>
+<code>$ tree fastlane/</code>
+fastlane/
+├── Appfile
+├── Fastfile
+├── Gymfile
+├── Pluginfile
+├── README.md
+├── Scanfile
+├── build
+│   ├── EAM360\ Enterprise-cal.app.dSYM.zip
+│   ├── EAM360\ Enterprise-cal.ipa
+│   ├── EAM360\ Enterprise.app.dSYM.zip
+│   └── EAM360\ Enterprise.ipa
+├── report.xml
+├── scripts
+└── test_output
+    ├── report.html
+    └── report.junit
+
+3 directories, 13 files
+          </pre>
+        </section>
+
+        <section>
+          <h4>Fastfile</h4>
+<pre><code>platform :ios do
+  before_all do
+    bundle_install
+    cocoapods
+  end
+
+  desc "Install all dependencies"
+  lane :install do
+    carthage(platform: "iOS", use_binaries: false)
+  end
+
+  desc "Update all dependencies"
+  lane :updateDeps do
+    sh "pod repo update"
+    sh "pod update"
+    carthage(command: "update", platform: "iOS", use_binaries: false)
+  end
+
+  desc "Update carthage"
+  lane :updateCarthage do
+    carthage(command: "update", platform: "iOS", use_binaries: false)
+  end
+
+  desc "Runs all the tests"
+  lane :test do
+    scan
+  end
+
+  desc "Build development"
+  lane :build do
+    environment = ENV["IOS_ENVIRONMENT"]
+    configuration = get_configuration
+
+    UI.message "Building for #{environment} with #{configuration} configuration..."
+
+    gym(configuration: configuration)
+  end
+end
+</code></pre>
+        </section>
+
+        <section>
+          <h3>Gym</h3>
+        </section>
+
+        <section>
+          <h3>Scan</h3>
+        </section>
+
+        <section>
+          <h3>Crashlytics</h3>
+          <span>for beta releases</span>
+          <aside class="notes">
+            TODO: Attach Screenshots
+          </aside>
+        </section>
+
+        <section>
+          <img src="images/crashlytics-beta.jpeg" alt="beta"/>
+        </section>
+
+        <section>
+          <h3>Diawi</h3>
+          <span>for sharing pre-release versions</span>
+        </section>
+
+        <section>
+          <h2>Dealing with multiple environments</h2>
+        </section>
+
+        <section>
+          <pre><code>
+enum Environment: String {
+  case Develop = "Develop"
+  case Testing = "Testing"
+  case Production = "Production"
+
+  var baseURL: String {
+    switch self {
+      case .Production: return "https://prod.eam360.com"
+      default: return "http://dev.eam360.com"
+    }
+  }
+
+
+  var pubnubPubKey:  String {
+    return "pub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  }
+
+  var pubnubSubKey:  String {
+    return "sub-c-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  }
+
+  var logLevel: XCGLogger.Level {
+    switch self {
+      case .Production: return .error
+      default: return .debug
+    }
+  }
+}
+
+struct EnvironmentConfig {
+  lazy var environment: Environment = {
+    if let configuration = Bundle.main.object(forInfoDictionaryKey: "Configuration") as? String {
+      switch configuration {
+        case "Production": return Environment.Production
+        case "Testing": return Environment.Testing
+        default: return Environment.Develop
+      }
+    }
+
+    return Environment.Develop
+  }()
+}
+</code></pre>
+        </section>
+
+        <section>
+          <img src="images/configuration.png" alt="beta"/>
+        </section>
+
+        <section>
+          <h2>Testing</h2>
+          <ul>
+            <li>Quick / Nimble</li>
+            <li>Calabash</li>
+          </ul>
+        </section>
+
+        <section>
+          <h4>Last but not least</h4>
+
+          <ul>
+            <li>Cocoapods</li>
+            <li>Carthage</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Where are we?</h3>
+          <ul>
+            <li>Testers be able to test the code, as and when they want - Done</li>
+            <li>Developers be able to quickly build and publish an ipa - Done</li>
+            <li>Stable codebase with good test coverage - In progress</li>
+            <li>Minimum setup required for new developers - We need new developers to come and test this for us! ;)</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+      // More info about config & dependencies:
+      // - https://github.com/hakimel/reveal.js#configuration
+      // - https://github.com/hakimel/reveal.js#dependencies
+      Reveal.initialize({
+        dependencies: [
+          { src: 'plugin/markdown/marked.js' },
+          { src: 'plugin/markdown/markdown.js' },
+          { src: 'plugin/notes/notes.js', async: true },
+          { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+        ]
+      });
+    </script>
+  </body>
 </html>

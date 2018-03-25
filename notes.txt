@@ -1,0 +1,112 @@
+Purpose
+-------
+
+This talk is an expereince report on how we have automated some of the manual steps involved in creating a build and deploying it to users of our app.
+
+About me:
+  I am a Lead Consultant @ TarkaLabs. In a career of 5 years, I have worked on projects using Java, Ruby, React, Node.js, Python and now iOS (for the past 8 months) across different domains.
+
+  Things to consider:
+    - Enterprise app
+    - Our users don't use app store to get our app
+    - We have only a couple of devs working on the iOS front
+    - We have different flavors of the app
+    - Talks to API
+    - Fairly complex with offline update and sync when online mechanism
+    - Backed by CoreData
+
+  What we began with:
+    - A fairly manual build and archive process involving Xcode
+    - ~ 30 mins of work
+    - Mailing the built .ipa to the testers for testing
+
+  Where did we want to reach:
+    - Testers be able to test the code, as and when they want
+    - Developers be able to quickly build and publish an ipa
+
+  Before I begin talking about where we are now:
+
+    What are tools we used:
+      - Fastlane
+      - Crashlytics
+      - Diawi
+
+
+  Fastlane:
+    fastlane makes working with the Apple Developer environment a tad bit pleasant.
+
+    "fastlane is a tool for iOS and Android developers to automate tedious tasks like generating screenshots, dealing with provisioning profiles, and releasing your application."
+
+    It is a collection of ruby scripts and small tools when combined can give a powerful integration and deployment system.
+
+    fastlane gives you a Rake-like DSL for creating and chaining actions.
+
+    Let's take a peak inside fastlane directory:
+<pre>
+<code>$ tree fastlane/</code>
+fastlane/
+├── Appfile
+├── Fastfile
+├── Gymfile
+├── Pluginfile
+├── README.md
+├── Scanfile
+├── build
+│   ├── EAM360\ Enterprise-cal.app.dSYM.zip
+│   ├── EAM360\ Enterprise-cal.ipa
+│   ├── EAM360\ Enterprise.app.dSYM.zip
+│   └── EAM360\ Enterprise.ipa
+├── report.xml
+├── scripts
+└── test_output
+    ├── report.html
+    └── report.junit
+
+3 directories, 13 files
+</pre>
+
+  Prying further into 'Fastfile':
+<pre><code>platform :ios do
+  before_all do
+    bundle_install
+    cocoapods
+  end
+
+  desc "Install all dependencies"
+  lane :install do
+    carthage(platform: "iOS", use_binaries: false)
+  end
+
+  desc "Update all dependencies"
+  lane :updateDeps do
+    sh "pod repo update"
+    sh "pod update"
+    carthage(command: "update", platform: "iOS", use_binaries: false)
+  end
+
+  desc "Update carthage"
+  lane :updateCarthage do
+    carthage(command: "update", platform: "iOS", use_binaries: false)
+  end
+
+  desc "Runs all the tests"
+  lane :test do
+    scan
+  end
+
+  desc "Build development"
+  lane :build do
+    environment = ENV["IOS_ENVIRONMENT"]
+    configuration = get_configuration
+
+    UI.message "Building for #{environment} with #{configuration} configuration..."
+
+    gym(configuration: configuration)
+  end
+end
+</code></pre>
+
+
+We use scan for running test cases and gym for building.
+
+Let me run this on the background. Please feel free to ask any questions.

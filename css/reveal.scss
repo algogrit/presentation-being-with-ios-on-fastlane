@@ -1467,3 +1467,13 @@ body {
 .zoomed .reveal .roll span:after {
 	visibility: hidden;
 }
+
+.brand {
+  position: absolute;
+
+  bottom: 10px;
+  left: 10px;
+
+  font-size: 24px;
+  font-weight: normal;
+}

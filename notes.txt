@@ -4,7 +4,7 @@ Purpose
 This talk is an expereince report on how we have automated some of the manual steps involved in creating a build and deploying it to users of our app.
 
 About me:
-  I am a Lead Consultant @ TarkaLabs. In a career of 5 years, I have worked on projects using Java, Ruby, React, Node.js, Python and now iOS (for the past 8 months) across different domains.
+  I am a Lead Consultant @ TarkaLabs. In a career of 6 years, I have worked on projects using Java, Ruby, React, Node.js, Python, Go, Elixir, Elm and iOS across different domains.
 
   Things to consider:
     - Enterprise app
